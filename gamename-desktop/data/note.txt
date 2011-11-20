@@ -1,0 +1,18 @@
+LEVO
+DESNO
+GOR
+DOL
+
+A - rotacija gor
+Q - rotacija dol
+
+W - priblizevanje
+S - oddaljevanje
+
+Y - na mestu
+
+P - predvajaj
+O - pavza
+1 - zvok 1
+2 - zvok 2
+3 - zvok 3
