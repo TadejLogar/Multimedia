@@ -4,6 +4,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.Component;
 
+import javax.media.opengl.GL;
+
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
@@ -15,6 +17,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL10;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g3d.loaders.obj.ObjLoader;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
@@ -24,6 +27,7 @@ import com.badlogic.gdx.graphics.GL10;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.VertexAttribute;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
 
@@ -51,6 +55,14 @@ Zahteve:
  * 
  */
 public class Game implements ApplicationListener {
+		public class Type {
+			public static final int BOX = 1;
+			public static final int OBJECT1 = 2;
+			public static final int OBJECT2 = 3;
+		}
+		
+		private int type;
+	
 		private Mesh[] mesh;
         private Camera camera;
         
@@ -69,6 +81,13 @@ public class Game implements ApplicationListener {
 		private String note;
 		private BitmapFont font;
 		private SpriteBatch spriteBatch;
+		
+		private Mesh object;
+		private Texture texture;
+		
+		public Game(int type) {
+			this.type = type;
+		}
         
         public void setRotX(float rotX) {
         	this.rotX = rotX;
@@ -175,6 +194,14 @@ public class Game implements ApplicationListener {
 	    			
     				}
     				
+    				if (type == Type.OBJECT1) {
+	    				object = ObjLoader.loadObj(Gdx.files.internal("data/xerai.obj").read()); // butterfly2.obj
+	    				texture = new Texture(Gdx.files.internal("data/x.jpg")); // badlogic.jpg
+    				} else if (type == Type.OBJECT2) {
+	    				object = ObjLoader.loadObj(Gdx.files.internal("data/butterfly2.obj").read()); // butterfly2.obj
+	    				texture = new Texture(Gdx.files.internal("data/badlogic.jpg")); // badlogic.jpg
+    				}
+    				
     				
                     //cam.update();
                     //renderer.setProjectionMatrix(cam.combined);
@@ -212,6 +239,12 @@ public class Game implements ApplicationListener {
     	int deltaY;
 
     	float i = 0;
+		private int angleX;
+		private int angleY;
+		private float camY;
+		private float camX;
+
+		private float light = 0.8f;
     	
         @Override
         public void render() {
@@ -278,6 +311,12 @@ public class Game implements ApplicationListener {
     			music.play();
     		} else if (Gdx.input.isKeyPressed(Input.Keys.O)) {
     			music.pause();
+    		} else if (Gdx.input.isKeyPressed(Input.Keys.N)) {
+    			angleX -= 3;
+    			updateCamera();
+    		} else if (Gdx.input.isKeyPressed(Input.Keys.M)) {
+    			angleX += 3;
+    			updateCamera();
     		}
     		
     		
@@ -317,8 +356,47 @@ public class Game implements ApplicationListener {
     		//Gdx.gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
     		//mesh.render(GL10.GL_TRIANGLES, 0, 3);
 
-    		for (Mesh face : mesh) {
-    			face.render(GL10.GL_TRIANGLE_STRIP, 0, 4);
+    		if (type == Type.BOX) {
+	    		for (Mesh face : mesh) {
+	    			face.render(GL10.GL_TRIANGLE_STRIP, 0, 4);
+	    		}
+    		} else if (type == Type.OBJECT1 || type == Type.OBJECT2) {
+           	 	GL10 gl = Gdx.gl10;
+           	 	gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
+                gl.glEnable(GL10.GL_TEXTURE_2D);
+                gl.glEnable(GL10.GL_DEPTH_TEST);
+                gl.glColor4f(light , light, light, light);
+                
+                // http://code.google.com/p/libgdx-users/wiki/MeshLighting
+                
+				gl.glEnable(GL10.GL_LIGHTING);   
+				
+				// Enable up to n=8 light sources: GL_LIGHTn
+				gl.glEnable(GL10.GL_LIGHT0);
+				gl.glEnable(GL10.GL_LIGHT1);
+				gl.glEnable(GL10.GL_LIGHT2);
+				gl.glEnable(GL10.GL_LIGHT3);
+				gl.glEnable(GL10.GL_LIGHT4);
+
+				// light position
+				gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, new float[]{0, 0, 1, 1}, 0);
+
+				// Light that has been reflected by other objects and hits the mesh in small amounts
+				gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, new float[]{0.005f, 0.005f, 0.005f, 1f}, 0);
+
+				// setting diffuse light color like a bulb or neon tube
+				gl.glLightfv(GL10.GL_LIGHT1, GL10.GL_DIFFUSE, new float[]{0.9f, 0.9f, 0.7f, 1f}, 0);
+
+				// setting specular light color        like a halogen spot
+				gl.glLightfv(GL10.GL_LIGHT2, GL10.GL_SPECULAR, new float[]{0.9f, 0.9f, 0.7f, 1f}, 0);
+
+                
+                camera.update();
+                camera.apply(gl);
+    			
+    			
+    			texture.bind();
+    			object.render(GL10.GL_TRIANGLES);
     		}
         	
             /*total = rotX;
@@ -364,7 +442,27 @@ public class Game implements ApplicationListener {
     		//setCamera();
     	}
     	
-    	private void setCamera() {
+    	private void updateCamera()
+    	{
+    		double x = angleX * 2 * Math.PI/360;
+    		double y = angleY * 2 * Math.PI/360;
+    		camera.position.x = (float)Math.sin(x) * zoom * (float)Math.cos(y) + camX;
+    		camera.position.z = (float)Math.cos(x) * zoom * (float)Math.cos(y) ;
+    		camera.position.y = (float)Math.sin(y) * zoom + camY;
+    		camera.lookAt(0, 0, 0);
+    	}
+    	
+    	private void setCamera()
+    	{
+    		float aspectRatio = (float) width / (float) height;
+    		camera = isPerspective
+    				? new PerspectiveCamera(67, 2f * aspectRatio, 2f)
+    				: new OrthographicCamera(2f * aspectRatio, 2f);
+    		
+    		updateCamera();
+    	}
+    	
+    	private void setCameraOld() {
     		float aspectRatio = (float) width / (float) height;
     		if (isPerspective) {
     			camera = new PerspectiveCamera(67, 2f * aspectRatio, 2f);
@@ -378,7 +476,7 @@ public class Game implements ApplicationListener {
     		updateCamera();
     	}
     	
-    	private void updateCamera() {
+    	private void updateCameraOld() {
     		/*double x = rotX * 2 * Math.PI / 360;
     		double y = rotY * 2 * Math.PI / 360;
     		camera.position.x = (float) Math.sin(x) * zoom * (float) Math.cos(y);

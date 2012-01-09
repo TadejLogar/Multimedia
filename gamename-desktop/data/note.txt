@@ -11,6 +11,9 @@ S - oddaljevanje
 
 Y - na mestu
 
+Y + N - na mestu
+Y + M - na mestu
+
 P - predvajaj
 O - pavza
 1 - zvok 1
